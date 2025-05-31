@@ -167,7 +167,11 @@ const HomeScreen = () => {
         <View style={{ paddingHorizontal: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <Text style={{ color: '#111827', fontSize: 20, fontWeight: '700' }}>Transactions</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('transactions')}>
+            <TouchableOpacity onPress={
+              () => {
+                // @ts-ignore
+                navigation.navigate('transactions')
+              }}>
               <Text style={{ color: '#3B82F6', fontWeight: '500' }}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -235,7 +239,10 @@ const HomeScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={{ backgroundColor: '#3B82F6', width: 56, height: 56, borderRadius: 9999, alignItems: 'center', justifyContent: 'center' }}
-            onPress={() => navigation.navigate('add')}
+            onPress={() => {
+              // @ts-ignore
+              navigation.navigate('add')
+            }}
           >
             <Plus size={24} color="#FFFFFF" />
           </TouchableOpacity>
