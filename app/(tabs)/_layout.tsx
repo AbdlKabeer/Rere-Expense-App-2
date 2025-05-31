@@ -163,3 +163,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+// import { Tabs } from 'expo-router';
+// import { Text } from 'react-native';
+
+// export default function TabLayout() {
+//   return (
+//     <Tabs>
+//       <Tabs.Screen
+//         name="index"
+//         options={{
+//           title: 'Home',
+//           tabBarIcon: () => <Text>Home</Text>,
+//         }}
+//       />
+//       <Tabs.Screen
+//         name="add"
+//         options={{
+//           title: 'Add',
+//           tabBarIcon: () => <Text>Add</Text>,
+//         }}
+//       />
+//       <Tabs.Screen
+//         name="transactions"
+//         options={{
+//           title: 'Transactions',
+//           tabBarIcon: () => <Text>Transactions</Text>,
+//         }}
+//       />
+//     </Tabs>
+//   );
+// }

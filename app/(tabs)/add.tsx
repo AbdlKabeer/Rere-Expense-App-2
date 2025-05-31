@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, SafeAreaView, StatusBar, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { X, Calendar, BarChart3, Plus, Minus, Check } from 'lucide-react-native';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -265,6 +264,8 @@ const AddTransactionScreen = () => {
     ? categories.filter(cat => !['Salary', 'Gift'].includes(cat.name))
     : categories.filter(cat => ['Salary', 'Gift'].includes(cat.name));
 
+  console.log('Rendering AddTransactionScreen'); // Debug log
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <StatusBar barStyle="dark-content" />
@@ -295,7 +296,7 @@ const AddTransactionScreen = () => {
               marginRight: 12,
             }}
           >
-            <Check size={16} color="#10B981" />
+            <Text style={{ fontSize: 16 }}>✅</Text>
           </View>
           <Text style={{ color: '#FFFFFF', fontWeight: '500', flex: 1 }}>{successMessage || 'Transaction saved'}</Text>
         </View>
@@ -402,7 +403,7 @@ const AddTransactionScreen = () => {
                   onPress={handleDecrement}
                   activeOpacity={0.7}
                 >
-                  <Minus size={24} color="#374151" strokeWidth={2} />
+                  <Text style={{ fontSize: 24 }}>➖</Text>
                 </TouchableOpacity>
                 <View style={{ paddingHorizontal: 24 }}>
                   <Text style={{ color: '#9CA3AF', fontSize: 14, textAlign: 'center' }}>
@@ -423,7 +424,7 @@ const AddTransactionScreen = () => {
                   onPress={handleIncrement}
                   activeOpacity={0.7}
                 >
-                  <Plus size={24} color="#3B82F6" strokeWidth={2} />
+                  <Text style={{ fontSize: 24 }}>➕</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -460,7 +461,7 @@ const AddTransactionScreen = () => {
                   marginRight: 12,
                 }}
               >
-                <BarChart3 size={16} color="#6B7280" />
+                <Text style={{ fontSize: 16 }}>📊</Text>
               </View>
               <Text style={{ color: '#374151', fontWeight: '500' }}>Category</Text>
               {selectedCategory && (
@@ -544,7 +545,7 @@ const AddTransactionScreen = () => {
                   marginRight: 12,
                 }}
               >
-                <Calendar size={16} color="#6B7280" />
+                <Text style={{ fontSize: 16 }}>📅</Text>
               </View>
               <Text style={{ color: '#374151', fontWeight: '500' }}>{getCurrentDate()}</Text>
             </View>
@@ -563,7 +564,7 @@ const AddTransactionScreen = () => {
           disabled={isLoading || showSuccess}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {showSuccess && <Check size={20} color="#FFFFFF" style={{ marginRight: 8 }} />}
+            {showSuccess && <Text style={{ fontSize: 20, color: '#FFFFFF', marginRight: 8 }}>✅</Text>}
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 18 }}>
               {isLoading ? 'SAVING...' : showSuccess ? 'SAVED!' : 'SAVE'}
             </Text>

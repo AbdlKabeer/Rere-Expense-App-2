@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
-import { Filter, Home, CreditCard, BarChart3, Settings, Plus } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Path } from 'react-native-svg';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -32,6 +32,13 @@ interface ChartData {
   month: string;
   income: number;
   expense: number;
+}
+
+interface CategoryBreakdown {
+  name: string;
+  amount: number;
+  color: string;
+  icon: string;
 }
 
 const categories: Category[] = [
@@ -70,11 +77,10 @@ const formatCurrency = (amount: number) => {
 
 const formatDate = (dateStr: string) => {
   try {
-    // Parse the date string in the expected format
-    const parsedDate = new Date(dateStr.replace(/,/, '')); // Remove comma for better parsing
+    const parsedDate = new Date(dateStr.replace(/,/, ''));
     if (isNaN(parsedDate.getTime())) {
       console.warn(`Invalid date string: ${dateStr}`);
-      return dateStr; // Fallback to raw string if parsing fails
+      return dateStr;
     }
     const today = new Date();
     const isToday = parsedDate.toDateString() === today.toDateString();
@@ -84,12 +90,29 @@ const formatDate = (dateStr: string) => {
     return parsedDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
   } catch (error) {
     console.error(`Error parsing date: ${dateStr}`, error);
-    return dateStr; // Fallback to raw string on error
+    return dateStr;
   }
 };
 
 const formatDateRange = (start: Date, end: Date) => {
   return `${start.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} - ${end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+};
+
+// Helper function to create pie chart paths
+const createPieSlice = (startAngle: number, endAngle: number, radius: number, color: string) => {
+  const startRad = (startAngle * Math.PI) / 180;
+  const endRad = (endAngle * Math.PI) / 180;
+  const x1 = 100 + radius * Math.cos(startRad);
+  const y1 = 100 + radius * Math.sin(startRad);
+  const x2 = 100 + radius * Math.cos(endRad);
+  const y2 = 100 + radius * Math.sin(endRad);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return (
+    <Path
+      d={`M100,100 L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`}
+      fill={color}
+    />
+  );
 };
 
 const TransactionsScreen = () => {
@@ -99,6 +122,9 @@ const TransactionsScreen = () => {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [dateRange, setDateRange] = useState('');
+  const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
+  const [averageTransaction, setAverageTransaction] = useState(0);
+  const [topCategory, setTopCategory] = useState<CategoryBreakdown | null>(null);
 
   const fetchTransactions = async () => {
     try {
@@ -123,6 +149,36 @@ const TransactionsScreen = () => {
         .reduce((sum, transaction) => sum + transaction.amount, 0);
       setTotalIncome(incomeSum);
       setTotalExpenses(expenseSum);
+
+      // Category Breakdown
+      const categorySums: { [key: string]: { amount: number; color: string; icon: string } } = {};
+      filteredTransactions
+        .filter(t => t.type === activeTab)
+        .forEach(transaction => {
+          const catId = transaction.category?.id || 0;
+          const category = categories.find(c => c.id === catId) || { name: 'Unknown', color: '#F3F4F6', icon: '❓' };
+          if (!categorySums[category.name]) {
+            categorySums[category.name] = { amount: 0, color: category.color, icon: category.icon };
+          }
+          categorySums[category.name].amount += transaction.amount;
+        });
+
+      const breakdown = Object.entries(categorySums).map(([name, data]) => ({
+        name,
+        amount: data.amount,
+        color: data.color,
+        icon: data.icon,
+      }));
+      setCategoryBreakdown(breakdown);
+
+      // Average Transaction
+      const tabTransactions = filteredTransactions.filter(t => t.type === activeTab);
+      const avg = tabTransactions.length > 0 ? tabTransactions.reduce((sum, t) => sum + t.amount, 0) / tabTransactions.length : 0;
+      setAverageTransaction(avg);
+
+      // Top Category
+      const top = breakdown.length > 0 ? breakdown.reduce((max, cat) => (cat.amount > max.amount ? cat : max)) : null;
+      setTopCategory(top);
 
       const monthlyData: { [key: string]: { income: number; expense: number } } = {};
       filteredTransactions.forEach(transaction => {
@@ -153,6 +209,9 @@ const TransactionsScreen = () => {
       console.log('Fetched transactions:', fetchedTransactions);
       console.log('Chart data:', newChartData);
       console.log('Total income:', incomeSum, 'Total expenses:', expenseSum);
+      console.log('Category breakdown:', breakdown);
+      console.log('Average transaction:', avg);
+      console.log('Top category:', top);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
@@ -165,11 +224,11 @@ const TransactionsScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       fetchTransactions();
-    }, [])
+    }, [activeTab])
   );
 
-  const maxIncome = Math.max(...chartData.map(d => d.income), 1);
-  const maxExpense = Math.max(...chartData.map(d => d.expense), 1);
+  const maxIncome = Math.max(...chartData.map(d => d.income || 0), 1);
+  const maxExpense = Math.max(...chartData.map(d => d.expense || 0), 1);
   const maxValue = Math.max(maxIncome, maxExpense);
 
   const groupedTransactions = transactions.reduce((acc, transaction) => {
@@ -179,15 +238,32 @@ const TransactionsScreen = () => {
     return acc;
   }, {} as { [key: string]: Transaction[] });
 
+  console.log('Rendering TransactionsScreen');
+  console.log('Grouped transactions:', groupedTransactions);
+
+  // Calculate pie chart slices
+  const totalAmount = categoryBreakdown.reduce((sum, cat) => sum + cat.amount, 0);
+  let currentAngle = 0;
+  const pieSlices = categoryBreakdown.map(cat => {
+    const percentage = totalAmount > 0 ? (cat.amount / totalAmount) * 360 : 0;
+    const slice = {
+      startAngle: currentAngle,
+      endAngle: currentAngle + percentage,
+      color: cat.color,
+    };
+    currentAngle += percentage;
+    return slice;
+  });
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <StatusBar barStyle="dark-content" />
       <View style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ color: '#111827', fontSize: 20, fontWeight: '700' }}>Transactions</Text>
-          <TouchableOpacity>
-            <Filter size={24} color="#6B7280" />
-          </TouchableOpacity>
+          {/* <TouchableOpacity onPress={() => console.log('Filter pressed')}>
+            <Text style={{ fontSize: 24 }}>🔎</Text>
+          </TouchableOpacity> */}
         </View>
       </View>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -218,7 +294,7 @@ const TransactionsScreen = () => {
                 flex: 1,
                 paddingVertical: 12,
                 borderRadius: 12,
-                ...(activeTab === 'expense' ? { 
+                ...(activeTab === 'expense' ? {
                   backgroundColor: '#60A5FA',
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 1 },
@@ -254,12 +330,12 @@ const TransactionsScreen = () => {
                     return (
                       <View key={index} style={{ flex: 1, alignItems: 'center' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 120 }}>
-                          <View style={{ 
-                            backgroundColor: activeTab === 'income' ? '#10B981' : '#A855F7', 
-                            borderTopLeftRadius: 2, 
-                            borderTopRightRadius: 2, 
-                            height, 
-                            width: 8 
+                          <View style={{
+                            backgroundColor: activeTab === 'income' ? '#10B981' : '#A855F7',
+                            borderTopLeftRadius: 2,
+                            borderTopRightRadius: 2,
+                            height,
+                            width: 8,
                           }} />
                         </View>
                       </View>
@@ -277,6 +353,76 @@ const TransactionsScreen = () => {
             )}
           </View>
         </View>
+        {/* Insights Section */}
+        <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+          <Text style={{ color: '#111827', fontSize: 20, fontWeight: '700', marginBottom: 16 }}>Insights</Text>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24 }}>
+            {/* Net Cash Flow */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 4 }}>Net Cash Flow</Text>
+              <Text style={{ color: totalIncome - totalExpenses >= 0 ? '#10B981' : '#EF4444', fontSize: 18, fontWeight: '700' }}>
+                {formatCurrency(totalIncome - totalExpenses)}
+              </Text>
+            </View>
+            {/* Average Transaction */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 4 }}>Average {activeTab} Transaction</Text>
+              <Text style={{ color: '#111827', fontSize: 18, fontWeight: '700' }}>
+                {formatCurrency(averageTransaction)}
+              </Text>
+            </View>
+            {/* Top Category */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 4 }}>Top {activeTab} Category</Text>
+              {topCategory ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 32, height: 32, backgroundColor: topCategory.color, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                    <Text style={{ fontSize: 16 }}>{topCategory.icon}</Text>
+                  </View>
+                  <Text style={{ color: '#111827', fontSize: 18, fontWeight: '700' }}>
+                    {topCategory.name} ({formatCurrency(topCategory.amount)})
+                  </Text>
+                </View>
+              ) : (
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>No data</Text>
+              )}
+            </View>
+            {/* Category Breakdown Pie Chart */}
+            <View>
+              <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 16 }}>{activeTab} by Category</Text>
+              {categoryBreakdown.length === 0 ? (
+                <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#6B7280' }}>No category data available</Text>
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center' }}>
+                  <Svg width={200} height={200}>
+                    {pieSlices.map((slice, index) => (
+                      <React.Fragment key={index}>
+                        {createPieSlice(slice.startAngle, slice.endAngle, 90, slice.color)}
+                      </React.Fragment>
+                    ))}
+                    <Path
+                      d="M100,100 m-50,0 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0"
+                      fill="#FFFFFF"
+                    />
+                  </Svg>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 16 }}>
+                    {categoryBreakdown.map((cat, index) => (
+                      <View key={index} style={{ flexDirection: 'row', alignItems: 'center', width: '50%', paddingVertical: 4 }}>
+                        <View style={{ width: 16, height: 16, backgroundColor: cat.color, borderRadius: 4, marginRight: 8 }} />
+                        <Text style={{ color: '#6B7280', fontSize: 12 }}>
+                          {cat.name}: {((cat.amount / (activeTab === 'income' ? totalIncome : totalExpenses) * 100) || 0).toFixed(1)}%
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+        {/* Transactions Section */}
         <View style={{ paddingHorizontal: 24 }}>
           {Object.keys(groupedTransactions).length === 0 ? (
             <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16 }}>
@@ -292,68 +438,45 @@ const TransactionsScreen = () => {
                 <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 16 }}>{date}</Text>
                 <Text style={{ color: '#111827', fontSize: 18, fontWeight: '700', marginBottom: 16 }}>
                   {formatCurrency(
-                    dateTransactions
-                      .filter(t => t.type === activeTab)
-                      .reduce((sum, transaction) => sum + transaction.amount, 0)
+                    dateTransactions.filter(t => t.type === activeTab).reduce((sum, transaction) => sum + transaction.amount, 0)
                   )}
                 </Text>
-                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16 }}>
-                  {dateTransactions
-                    .filter(t => t.type === activeTab)
-                    .map((transaction, index) => {
-                      const category = categories.find(cat => cat.id === transaction.category?.id) || {
-                        name: 'Unknown',
-                        icon: '❓',
-                        color: '#F3F4F6',
-                      };
-                      return (
-                        <View
-                          key={transaction.id}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 16,
-                            ...(index < dateTransactions.filter(t => t.type === activeTab).length - 1 ? { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' } : {}),
-                          }}
-                        >
-                          <View style={{ width: 48, height: 48, backgroundColor: category.color, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                            <Text style={{ fontSize: 18 }}>{category.icon}</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ color: '#111827', fontSize: 16, fontWeight: '600' }}>{category.name}</Text>
-                            <Text style={{ color: '#6B7280', fontSize: 14 }}>{transaction.note || 'No note'}</Text>
-                          </View>
-                          <Text style={{ color: transaction.type === 'income' ? '#10B981' : '#EF4444', fontWeight: '700' }}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                          </Text>
+                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, paddingBottom: 56 }}>
+                  {dateTransactions.filter(t => t.type === activeTab).map((transaction, index) => {
+                    const category = categories.find(cat => cat.id === transaction.category?.id) || {
+                      name: 'Unknown',
+                      icon: '❓',
+                      color: '#F3F4F6',
+                    };
+                    return (
+                      <View
+                        key={transaction.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingVertical: 16,
+                          ...(index < dateTransactions.filter(t => t.type === activeTab).length - 1 ? { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' } : {}),
+                        }}
+                      >
+                        <View style={{ width: 48, height: 48, backgroundColor: category.color, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                          <Text style={{ fontSize: 18 }}>{category.icon}</Text>
                         </View>
-                      );
-                    })}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#111827', fontSize: 16, fontWeight: '600' }}>{category.name}</Text>
+                          <Text style={{ color: '#6B7280', fontSize: 14 }}>{transaction.note || 'No note'}</Text>
+                        </View>
+                        <Text style={{ color: transaction.type === 'income' ? '#10B981' : '#EF4444', fontWeight: '700' }}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
             ))
           )}
         </View>
       </ScrollView>
-      <View style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingVertical: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <TouchableOpacity style={{ padding: 12 }}>
-            <Home size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={{ padding: 12 }}>
-            <CreditCard size={24} color="#3B82F6" />
-          </TouchableOpacity>
-          <TouchableOpacity style={{ backgroundColor: '#60A5FA', width: 56, height: 56, borderRadius: 9999, alignItems: 'center', justifyContent: 'center' }}>
-            <Plus size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={{ padding: 12 }}>
-            <BarChart3 size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={{ padding: 12 }}>
-            <Settings size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-      </View>
     </SafeAreaView>
   );
 };
