@@ -6,7 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 
 // Storage keys
 const STORAGE_KEYS = {
-  TRANSACTIONS: 'transactions',
+  TRANSACTIONS: 'transactions-1',
   CATEGORIES: 'categories',
 };
 
@@ -261,9 +261,6 @@ const TransactionsScreen = () => {
       <View style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ color: '#111827', fontSize: 20, fontWeight: '700' }}>Transactions</Text>
-          {/* <TouchableOpacity onPress={() => console.log('Filter pressed')}>
-            <Text style={{ fontSize: 24 }}>🔎</Text>
-          </TouchableOpacity> */}
         </View>
       </View>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>

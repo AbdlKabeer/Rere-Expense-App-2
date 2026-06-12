@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-// import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-// import { useFocusEffect, useNavigation } from '@react-navigation/native';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Transaction {
   id: string;
@@ -16,24 +14,24 @@ interface Transaction {
 }
 
 
-// const STORAGE_KEYS = {
-//   TRANSACTIONS: 'transactions',
-// };
+const STORAGE_KEYS = {
+  TRANSACTIONS: 'transactions-1',
+};
 
-// const TransactionStorage = {
-//   async getTransactions(): Promise<Transaction[]> {
-//     try {
-//       const transactionsJson = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-//       console.log('Raw transactions JSON:', transactionsJson);
-//       const parsed = transactionsJson ? JSON.parse(transactionsJson) : [];
-//       console.log('Parsed transactions:', parsed);
-//       return parsed;
-//     } catch (error) {
-//       console.error('Error getting transactions:', error);
-//       return [];
-//     }
-//   },
-// };
+const TransactionStorage = {
+  async getTransactions(): Promise<Transaction[]> {
+    try {
+      const transactionsJson = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      console.log('Raw transactions JSON:', transactionsJson);
+      const parsed = transactionsJson ? JSON.parse(transactionsJson) : [];
+      console.log('Parsed transactions:', parsed);
+      return parsed;
+    } catch (error) {
+      console.error('Error getting transactions:', error);
+      return [];
+    }
+  },
+};
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-NG', {
@@ -58,48 +56,44 @@ const TestHomeScreen = () => {
   const navigation = useNavigation();
 
 
-  console.log(transactions)
-  console.log(setTransactions)
-  console.log(setTotalIncome)
-  console.log(setTotalExpenses)
-  console.log(setBalance)
-  console.log(navigation)
-  console.log(totalIncome)
-  console.log(totalExpenses)
-  console.log(balance)
-  // const fetchTransactions = async () => {
-  //   try {
-  //     const fetchedTransactions = await TransactionStorage.getTransactions();
-  //     console.log('Fetched transactions:', fetchedTransactions);
-  //     setTransactions(fetchedTransactions);
+  // console.log(totalIncome)
+  // console.log(totalExpenses)
+  // console.log(balance)
 
-  //     const expensesSum = fetchedTransactions
-  //       .filter(t => t.type === 'expense')
-  //       .reduce((sum, transaction) => sum + transaction.amount, 0) || 0;
-  //     const incomeSum = fetchedTransactions
-  //       .filter(t => t.type === 'income')
-  //       .reduce((sum, transaction) => sum + transaction.amount, 0) || 0;
 
-  //     setTotalExpenses(expensesSum);
-  //     setTotalIncome(incomeSum);
-  //     setBalance(incomeSum - expensesSum);
+  const fetchTransactions = async () => {
+    try {
+      const fetchedTransactions = await TransactionStorage.getTransactions();
+      console.log('Fetched transactions:', fetchedTransactions);
+      setTransactions(fetchedTransactions);
 
-  //     console.log('Income sum:', incomeSum, 'Expenses sum:', expensesSum, 'Balance:', incomeSum - expensesSum);
-  //   } catch (error) {
-  //     console.error('Error fetching transactions:', error);
-  //   }
-  // };
+      const expensesSum = fetchedTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, transaction) => sum + transaction.amount, 0) || 0;
+      const incomeSum = fetchedTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, transaction) => sum + transaction.amount, 0) || 0;
 
-  // useEffect(() => {
-  //   // fetchTransactions();
-  // }, []);
+      setTotalExpenses(expensesSum);
+      setTotalIncome(incomeSum);
+      setBalance(incomeSum - expensesSum);
 
-  // useFocusEffect(
-  //   React.useCallback(() => {
-  //     console.log('Fetching transactions on focus');
-  //     // fetchTransactions();
-  //   }, [])
-  // );
+      console.log('Income sum:', incomeSum, 'Expenses sum:', expensesSum, 'Balance:', incomeSum - expensesSum);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Fetching transactions on focus');
+      fetchTransactions();
+    }, [])
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
@@ -115,7 +109,7 @@ const TestHomeScreen = () => {
           <View style={{ backgroundColor: '#3B82F6', borderRadius: 24, padding: 24, marginBottom: 16 }}>
             <Text style={{ color: '#FFFFFF', fontSize: 14, opacity: 0.8, marginBottom: 8 }}>Total Balance</Text>
             <Text style={{ color: '#FFFFFF', fontSize: 36, fontWeight: '700', marginBottom: 24 }}>
-              {formatCurrency(10)}
+              {formatCurrency(balance)}
             </Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -124,7 +118,7 @@ const TestHomeScreen = () => {
                 </View>
                 <View>
                   <Text style={{ color: '#FFFFFF', fontSize: 14, opacity: 0.8 }}>Income</Text>
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>{formatCurrency(20)}</Text>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>{formatCurrency(totalIncome)}</Text>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -133,7 +127,7 @@ const TestHomeScreen = () => {
                 </View>
                 <View>
                   <Text style={{ color: '#FFFFFF', fontSize: 14, opacity: 0.8 }}>Expenses</Text>
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>{formatCurrency(10)}</Text>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>{formatCurrency(totalExpenses)}</Text>
                 </View>
               </View>
             </View>
@@ -141,7 +135,7 @@ const TestHomeScreen = () => {
         </View>
 
         {/* Transactions Section */}
-        {/* <View style={{ paddingHorizontal: 24 }}>
+        <View style={{ paddingHorizontal: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <Text style={{ color: '#111827', fontSize: 20, fontWeight: '700' }}>Transactions</Text>
             <TouchableOpacity onPress={() => {
@@ -197,7 +191,7 @@ const TestHomeScreen = () => {
               ))
             )}
           </View>
-        </View> */}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

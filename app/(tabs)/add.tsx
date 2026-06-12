@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Storage keys
 const STORAGE_KEYS = {
-  TRANSACTIONS: 'transactions',
+  TRANSACTIONS: 'transactions-1',
   CATEGORIES: 'categories',
 };
 
